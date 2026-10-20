@@ -1,0 +1,43 @@
+services:
+  mcp:
+    build: .
+    image: simovi-mcp:local
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    environment:
+      SIMOVI_ENVIRONMENT: production
+      SIMOVI_HOST: 0.0.0.0
+      SIMOVI_PORT: "8000"
+      SIMOVI_TOKEN_SHA256: ${SIMOVI_TOKEN_SHA256:?Set the SHA-256 digest of your bearer token}
+      SIMOVI_ALLOWED_HOSTS: '["${MCP_DOMAIN:-mcp.simovi.org}", "localhost", "127.0.0.1"]'
+      SIMOVI_ALLOWED_ORIGINS: '["https://${MCP_DOMAIN:-mcp.simovi.org}"]'
+      SIMOVI_UPSTREAM_TIMEOUT_SECONDS: ${SIMOVI_UPSTREAM_TIMEOUT_SECONDS:-10}
+    expose:
+      - "8000"
+    networks:
+      - proxy
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
+      traefik.http.routers.simovi-mcp.rule: Host(`${MCP_DOMAIN:-mcp.simovi.org}`)
+      traefik.http.routers.simovi-mcp.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.simovi-mcp.tls: "true"
+      traefik.http.routers.simovi-mcp.tls.certresolver: ${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      traefik.http.routers.simovi-mcp.service: simovi-mcp
+      traefik.http.services.simovi-mcp.loadbalancer.server.port: "8000"
+      traefik.http.services.simovi-mcp.loadbalancer.responseforwarding.flushinterval: "-1ms"
+      traefik.http.services.simovi-mcp.loadbalancer.healthcheck.path: /health
+      traefik.http.services.simovi-mcp.loadbalancer.healthcheck.interval: 30s
+      traefik.http.services.simovi-mcp.loadbalancer.healthcheck.timeout: 5s
+
+networks:
+  proxy:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}

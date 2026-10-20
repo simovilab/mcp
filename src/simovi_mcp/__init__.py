@@ -1,0 +1,1 @@
+"""SIMOVI's MCP application."""
